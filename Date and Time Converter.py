@@ -5,6 +5,6 @@ def mjd_to_utc(mjd):
     utc_date = t.to_value('iso', subfmt='date_hms')
     return utc_date
 
-mjd = 60474.356620
+mjd = 58366.235799
 utc_date = mjd_to_utc(mjd)
 print(utc_date)
