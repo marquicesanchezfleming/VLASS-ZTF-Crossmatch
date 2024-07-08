@@ -16,19 +16,18 @@ from ztfquery.utils import stamps
 import requests
 from PIL import Image
 import io
-
+import pandas as pd
+import csv
+import logging
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 fname = "VLASS_dyn_summary.php"
-
 import urllib.request
-
 url = 'https://archive-new.nrao.edu/vlass/VLASS_dyn_summary.php'
-output_file = 'VLASS_dyn_summary.php'
+output_file = 'CSV'
 
 urllib.request.urlretrieve(url, output_file)
-
 print(f'File downloaded to: {output_file}')
 
 
@@ -163,18 +162,26 @@ def get_cutout(imname, name, c, epoch):
     print("Cutout centered at position %s, %s" % (ra_deg, dec_deg))
 
     # Open image and establish coordinate system
-    im = pyfits.open(imname, ignore_missing_simple=True)[0].data[0, 0]
-    w = WCS(imname)
+    try:
+        with pyfits.open(imname, ignore_missing_simple=True) as hdulist:
+            im = hdulist[0].data[0, 0]
+            if im.size == 0:
+                print("Error: Image data is empty.")
+                return None
 
-    # Find the source position in pixels.
-    # This will be the center of our image.
+            w = WCS(hdulist[0].header)
+    except Exception as e:
+        print(f"Error reading image data: {e}")
+        return None
+
+    # Find the source position in pixels
     src_pix = w.wcs_world2pix([[ra_deg, dec_deg, 0, 0]], 0)
     x = src_pix[0, 0]
     y = src_pix[0, 1]
 
     # Check if the source is actually in the image
-    pix1 = pyfits.open(imname)[0].header['CRPIX1']
-    pix2 = pyfits.open(imname)[0].header['CRPIX2']
+    pix1 = hdulist[0].header['CRPIX1']
+    pix2 = hdulist[0].header['CRPIX2']
     badx = np.logical_or(x < 0, x > 2 * pix1)
     bady = np.logical_or(y < 0, y > 2 * pix2)
     if np.logical_and(badx, bady):
@@ -182,11 +189,9 @@ def get_cutout(imname, name, c, epoch):
         return None
     else:
         # Set the dimensions of the image
-        # Say we want it to be 12 arcseconds on a side,
-        # to match the DES images
         image_dim_arcsec = 12
-        delt1 = pyfits.open(imname)[0].header['CDELT1']
-        delt2 = pyfits.open(imname)[0].header['CDELT2']
+        delt1 = hdulist[0].header['CDELT1']
+        delt2 = hdulist[0].header['CDELT2']
         cutout_size = image_dim_arcsec / 3600  # in degrees
         dside1 = -cutout_size / 2. / delt1
         dside2 = cutout_size / 2. / delt2
@@ -197,18 +202,22 @@ def get_cutout(imname, name, c, epoch):
         im_plot_raw = im[int(y - dside1):int(y + dside1), int(x - dside2):int(x + dside2)]
         im_plot = np.ma.masked_invalid(im_plot_raw)
 
-        # 3-sigma clipping (find root mean square of values that are not above 3 standard deviations)
+        # 3-sigma clipping
         rms_temp = np.ma.std(im_plot)
         keep = np.ma.abs(im_plot) <= 3 * rms_temp
         rms = np.ma.std(im_plot[keep])
 
-        # Find peak flux in entire image
-        peak_flux = np.ma.max(im_plot.flatten())
+        if im_plot.flatten().size == 0:
+            print("Tile has not been imaged at the position of the source")
+            return None
+        else:
+            peak_flux = np.ma.max(im_plot.flatten())
+
 
         save_path = os.path.join(save_directory, f"{name}_{epoch}.png")
 
-        plt.imshow(
-            np.flipud(im_plot),
+        fig, ax = plt.subplots(figsize=(6,6))
+        ax.imshow(np.flipud(im_plot),
             extent=[-0.5 * cutout_size * 3600., 0.5 * cutout_size * 3600.,
                     -0.5 * cutout_size * 3600., 0.5 * cutout_size * 3600],
             vmin=vmin, vmax=vmax, cmap='YlOrRd')
@@ -225,6 +234,11 @@ def get_cutout(imname, name, c, epoch):
         print("PNG Downloaded Successfully")
 
         return peak_flux, rms
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+csv_file_path = "/Users/Djslime07/PycharmProjects/Rewriting /bts_data.CSV"
+ddir = "/Users/Djslime07/PycharmProjects/Rewriting /Images"
 
 
 def run_search(name, c, date=None):
@@ -257,6 +271,11 @@ def run_search(name, c, date=None):
             print("Looking for tile observation for %s" % tilename)
             epoch = epochs[ii]
             obsdate = obsdates[ii]
+
+            if obsdate == "Not submitted":
+                print(f"No valid observation date for tile {tilename} in epoch {epoch}")
+                continue  # Skip this tile
+
             # Adjust name so it works with the version 2 ones for 1.1 and 1.2
             if epoch == 'VLASS1.2':
                 epoch = 'VLASS1.2v2'
@@ -305,12 +324,22 @@ def run_search(name, c, date=None):
                 out = get_cutout(imname, name, c, epoch)
                 if out is not None:
                     peak, rms = out
+                    output_file = "Fluxes_and_RMS.csv"
+                    with open(output_file, 'a') as f:
+                        print(f"{name}_{epoch}.png has a peak flux of %s and a RMS of %s" %(np.round(peak * 1e3,
+                                                            3), np.round(rms * 1e3, 3)), file=f)
+                    print(rms, peak)
+
                     print("Peak flux is %s uJy" % (peak * 1e6))
                     print("RMS is %s uJy" % (rms * 1e6))
                     limit = rms * 1e6
                     obsdate = Time(obsdate, format='iso').mjd
-                    print("Tile observed on %s" % obsdate)
+
+                    output_file = "CSV's/VLASS_Observations.csv"
+                    with open(output_file, 'a') as f:
+                        print(f"{name}_{epoch}.png observed on %s" % obsdate, file=f)
                     print(limit, obsdate)
+
                 # Remove FITS file
                 os.remove(imname)
 
@@ -348,15 +377,66 @@ def plot_ls_cutout(ddir, name, ra_str, dec_str, outputf):
 
     return fname
 
-ddir = "/Users/Djslime07/PycharmProjects/Rewriting /Images"
-name = "SN2018gep"
-Cand_ra = "16h43m48.201s"
-Cand_dec = "+41d02m43.38s"
-SN2018gep = SkyCoord(ra = Cand_ra, dec = Cand_dec)
+def plot_ps1_cutout(ddir, name, ra_str, dec_str, outputf):
+    """ Plot cutout from PanSTARRS """
+    # Create a SkyCoord object from ra_str and dec_str
+    coord = SkyCoord(ra_str, dec_str, unit=("hour", "degree"))
 
-run_search("SN2018gep", SN2018gep)
-with open("output.html", "w") as outputf:
-    plot_ls_cutout(ddir, name, Cand_ra, Cand_dec, outputf)
+    fname = os.path.join(ddir, f"{name}_ps1.png")
+
+    if not os.path.isfile(fname):
+        img = stamps.get_ps_stamp(coord.ra.deg, coord.dec.deg, size=240, color=["y", "g", "i"])
+        plt.figure(figsize=(2.1, 2.1), dpi=120)
+        plt.imshow(np.asarray(img))
+        plt.title("PS1 (y/g/i)", fontsize=12)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(fname, bbox_inches="tight")
+
+        decsign = '+' if coord.dec.deg >= 0 else '-'
+        pslinkstr = f"https://ps1images.stsci.edu/cgi-bin/ps1cutouts?ra={coord.ra.deg:.6f}&dec={decsign}{abs(coord.dec.deg):.6f}&size=240&format=jpeg&filters=ygi"
+        outputf.write(f"<a href='{pslinkstr}'>")
+        outputf.write(f'<img src="{name}_ps1.png" height="200">')
+        outputf.write("</a>")
+        outputf.write('<br>')
+        plt.close()
+
+    return fname
+def process_object(row):
+    """Process a single object given a row from the CSV."""
+    name = row['name']
+    ra = row['ra']
+    dec = row['dec']
+    Obj = SkyCoord(ra, dec, unit=("hourangle", "deg"))
+
+    try:
+        logging.info(f"Processing object {name} at RA: {ra}, Dec: {dec}")
+        run_search(name, Obj)
+
+        with open("output.html", "a") as outputf:
+            plot_ls_cutout(ddir, name, ra, dec, outputf)
+            plot_ps1_cutout(ddir, name, ra, dec, outputf)
+
+    except Exception as e:
+        logging.error(f"Failed to process object {name}: {e}")
+
+def process_csv(csv_file_path, start_line=0, num_lines=None):
+    with open(csv_file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for idx, row in enumerate(reader):
+            if idx < start_line:
+                continue
+            if num_lines is not None and idx >= start_line + num_lines:
+                break
+            process_object(row)
+
+start_line = 2622  # If you want line x, then do (x-2) for the actual line
+num_lines = 1 # Number of lines to process, including first and last
+
+process_csv(csv_file_path, start_line, num_lines)
+
+logging.info("Processing complete.")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description= \
@@ -392,3 +472,4 @@ if __name__ == "__main__":
     else:
         print('Searching all obs dates')
         run_search(name, c)
+
