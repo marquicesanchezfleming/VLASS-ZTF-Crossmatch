@@ -1,5 +1,4 @@
 import numpy as np
-import subprocess
 import os
 import sys
 import argparse
@@ -7,7 +6,6 @@ import glob
 from astropy.io import fits as pyfits
 import matplotlib.pyplot as plt
 from urllib.request import urlopen
-from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 from astropy.time import Time
@@ -16,14 +14,14 @@ from ztfquery.utils import stamps
 import requests
 from PIL import Image
 import io
-import pandas as pd
 import csv
 import logging
+import urllib.request
+
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 fname = "VLASS_dyn_summary.php"
-import urllib.request
 url = 'https://archive-new.nrao.edu/vlass/VLASS_dyn_summary.php'
 output_file = 'CSV'
 
@@ -52,7 +50,6 @@ def get_tiles():
     obsdate = []
     epoch = []
 
-
     for line in lines[3:]:
         dat = list(filter(None, line.split("  ")))
         dat = np.array([val.strip() for val in dat])
@@ -72,7 +69,7 @@ def get_tiles():
     obsdate = np.array(obsdate)
     epoch = np.array(epoch)
 
-    return (names, dec_min, dec_max, ra_min, ra_max, epoch, obsdate)
+    return names, dec_min, dec_max, ra_min, ra_max, epoch, obsdate
 
 
 def search_tiles(tiles, c):
@@ -124,28 +121,22 @@ def get_subtiles(tilename, epoch):
     fname = np.array([val.split("\"")[7] for val in string_keep])
 
     pos_raw = np.array([val.split(".")[4] for val in fname])
-    if '-' in pos_raw[0]:
-        # dec < 0
-        ra_raw = np.array([val.split("-")[0] for val in pos_raw])
-        dec_raw = np.array([val.split("-")[1] for val in pos_raw])
-    else:
-        # dec > 0
-        ra_raw = np.array([val.split("+")[0] for val in pos_raw])
-        dec_raw = np.array([val.split("+")[1] for val in pos_raw])
+
     ra = []
     dec = []
-    for ii, val in enumerate(ra_raw):
-        # 24 hours is the same as hour 0
-        if val[1:3] == '24':
-            rah = '00'
-        else:
-            rah = val[1:3]
-        # calculate RA in hours mins and seconds
-        hms = "%sh%sm%ss" % (rah, val[3:5], val[5:])
+
+    for ii in range(len(pos_raw)):
+        rah = pos_raw[ii][1:3]
+        if rah == "24":
+            rah = "00"
+        ram = pos_raw[ii][3:5]
+        ras = pos_raw[ii][5:7]
+        decd = pos_raw[ii][7:10]
+        decm = pos_raw[ii][10:12]
+        decs = pos_raw[ii][12:]
+        hms = "%sh%sm%ss" % (rah, ram, ras)
         ra.append(hms)
-        # calculate Dec in degrees arcminutes and arcseconds
-        dms = "%sd%sm%ss" % (
-            dec_raw[ii][0:2], dec_raw[ii][2:4], dec_raw[ii][4:])
+        dms = "%sd%sm%ss" % (decd, decm, decs)
         dec.append(dms)
     ra = np.array(ra)
     dec = np.array(dec)
@@ -247,7 +238,7 @@ def run_search(name, c, date=None):
 
     Parameters
     ----------
-    names: name of the sources
+    name: name of the sources
     c: coordinates as SkyCoord object
     date: date in astropy Time format
     """
@@ -324,7 +315,7 @@ def run_search(name, c, date=None):
                 out = get_cutout(imname, name, c, epoch)
                 if out is not None:
                     peak, rms = out
-                    output_file = "Fluxes_and_RMS.csv"
+                    output_file = "/Users/Djslime07/PycharmProjects/Rewriting /Fluxes_and_RMS.csv"
                     with open(output_file, 'a') as f:
                         print(f"{name}_{epoch}.png has a peak flux of %s and a RMS of %s" %(np.round(peak * 1e3,
                                                             3), np.round(rms * 1e3, 3)), file=f)
@@ -430,8 +421,8 @@ def process_csv(csv_file_path, start_line=0, num_lines=None):
                 break
             process_object(row)
 
-start_line = 2622  # If you want line x, then do (x-2) for the actual line
-num_lines = 1 # Number of lines to process, including first and last
+start_line = 412  # If you want line x, then do (x-2) for the actual line
+num_lines = 2725 # Number of lines to process, including first and last
 
 process_csv(csv_file_path, start_line, num_lines)
 

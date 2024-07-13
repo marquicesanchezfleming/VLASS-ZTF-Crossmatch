@@ -416,7 +416,7 @@ def process_csv(csv_file_path, start_line=0, num_lines=None):
             process_object(row)
 
 
-start_line = 210  # If you want line x, then do (x-2) for the actual line
+start_line = 4442  # If you want line x, then do (x-2) for the actual line
 num_lines = 1000  # Number of lines to process, including first and last
 
 process_csv(csv_file_path, start_line, num_lines)
