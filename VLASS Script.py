@@ -143,7 +143,7 @@ def get_subtiles(tilename, epoch):
     c_tiles = SkyCoord(ra, dec, frame='icrs')
     return fname, c_tiles
 
-save_directory = "/Users/Djslime07/PycharmProjects/Rewriting /Images"
+save_directory = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Images"
 def get_cutout(imname, name, c, epoch):
     print("Generating cutout")
     # Position of source
@@ -228,8 +228,8 @@ def get_cutout(imname, name, c, epoch):
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-csv_file_path = "/Users/Djslime07/PycharmProjects/Rewriting /bts_data.CSV"
-ddir = "/Users/Djslime07/PycharmProjects/Rewriting /Images"
+csv_file_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/bts_data.CSV"
+ddir = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Images"
 
 
 def run_search(name, c, date=None):
@@ -315,7 +315,7 @@ def run_search(name, c, date=None):
                 out = get_cutout(imname, name, c, epoch)
                 if out is not None:
                     peak, rms = out
-                    output_file = "/Users/Djslime07/PycharmProjects/Rewriting /Fluxes_and_RMS.csv"
+                    output_file = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Fluxes_and_RMS.csv"
                     with open(output_file, 'a') as f:
                         print(f"{name}_{epoch}.png has a peak flux of %s and a RMS of %s" %(np.round(peak * 1e3,
                                                             3), np.round(rms * 1e3, 3)), file=f)
@@ -326,7 +326,7 @@ def run_search(name, c, date=None):
                     limit = rms * 1e6
                     obsdate = Time(obsdate, format='iso').mjd
 
-                    output_file = "CSV's/VLASS_Observations.csv"
+                    output_file = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/CSV's/VLASS_Observations.csv"
                     with open(output_file, 'a') as f:
                         print(f"{name}_{epoch}.png observed on %s" % obsdate, file=f)
                     print(limit, obsdate)
@@ -421,8 +421,8 @@ def process_csv(csv_file_path, start_line=0, num_lines=None):
                 break
             process_object(row)
 
-start_line = 412  # If you want line x, then do (x-2) for the actual line
-num_lines = 2725 # Number of lines to process, including first and last
+start_line = 513  # If you want line x, then do (x-2) for the actual line
+num_lines = 2726 # Number of lines to process, including first and last
 
 process_csv(csv_file_path, start_line, num_lines)
 
