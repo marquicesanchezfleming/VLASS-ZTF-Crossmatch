@@ -1,0 +1,62 @@
+Lets's detail what each folder is and what purpose each file in it serves
+
+1) CSV's: Contains various CSV's that are used during the project, they are;
+    a) bts_data.csv: Is the list from ZTF, contains the ZTFID, RA, Dec, IAUID, peakt, and type of transient
+    b) cleaned_vlass_obs.csv: Contains list of VLASS observations organized alphabetically by epoch
+    c) Difference_in_days.csv: Contains the difference in days between each VLASS epoch and the transient explosion date
+    d) Merged_Observations.csv: Contains the name, visual_obs_date, name_epoch, vlass_obs_date, epoch,days_diff
+    e) VLASS_Observations.csv: An unorganized version of the cleaned_vlass_obs.csv
+    f) ZTF_Observations.csv: Contains the peakt observations of every transient
+    g) fixed_obs?.csv: Contains a two-column list of the epochs and their difference in days
+    h) fixed_obs_sorted_right.csv: Is the alphabetically organzied version of fixed_obs?.csv
+    i) Fluxes_and_RMS.csv: Contains the values of every epoch and its corresponding peak flux and RMS
+    j) Flux_RMS_Sorted.csv: Is the alphabetically organized version of Fluxes_and_RMS.csv by epoch
+    k) largest_values.csv: Is the split version of fixed_obs_sorted_right.csv that has only the largest difference
+    l) smallest_values.csv: Is the split version of fixed_obs_sorted_right.csv that has only the smallest difference
+    m) largest_values_over_100.csv: Is the version of largest_values.csv that has only entries above -100
+    n) smallest_values.csv_100: Is the version of smallest_values.csv that has only entries above -100
+
+2)Images: Contains all the images from the project, including VLASS cutouts, Legacy Survey cutouts, and Pan-STARRS1
+          cutouts
+
+3)Scripts: Contains various mini-scripts that have been used to make the work flow better, they are;
+    a) Comparing_Epoch_to_Difference.py: Generates the Difference_in_Days.csv file
+    b) csv_dates_fixer.py: Turns the Difference_in_Days.csv into a csv with two columns
+    c) Date and Time Converter.py: Converts an inputted mjd into utc
+    d) Merging_Dates.py: Generates the merged_observations.csv
+    e) Subtracting_Dates.py: Subtracts the dates in the Difference_in_Days.csv
+    f) excluding_less_100.py: Inputs from the largest_values.csv and smallest_values.csv and only keeps the values
+       greater than -100
+    g) flux_rms_sorter.py: Alphabetically sorts the fixed_obs?.csv
+    h) For_FRMS.py: Only outputs the peak flux and RMS to the VLASS_Observations.csv file, doesn't download images
+    i) vlass_obs_cleaner.py: Inputs the VLASS_Observations.csv and alphabetically sorts it by epoch
+    j) Presentation_Prep.py: Calculates the luminosity from a given redshift and peak flux, also generates histograms using
+       data from the largest_values_over_100.csv and smallest_values_over_100.csv files
+
+4) 1st_Cut_Material: Contains all the files relevant for the 1st cut, they are listed in order as should be ran;
+    a) 1st_cut.py: Inputs the Fluxes_and_RMS.csv and outputs candidates with significance greater than 4
+    b) Semi_Chosen_Ones.csv: Contains all the results from 1st_cut.py
+    c) sigma_date_combiner.py: Inputs the Semi_Chosen_Ones.csv and Difference_in_days.csv to combine the two
+    d) combined.csv: Contains all the Semi_Chosen_ones.csv inputs and their corresponding dates from Difference_in_days.csv
+    e) filterer.py: Goes through the combined.csv and excludes epochs imaged before the explosion
+    f) 1st_cut_candidates: A final list of candidate transients whom all have positive delta-times
+
+5) 2nd_Cut_Material: Contains all the files relevant for the 2ndt cut, they are listed in order as should be ran;
+    a) Significance_Calculator.py: Inputs the Fluxes_and_RMS.csv and outputs the significance between each epoch
+    b) Calculated_Significances.csv: Contains a list of all transients and the statistical significance between its epochs
+    c) 2nd_cut.py: Inputs the Calculated_Significances.csv and excludes significances less than 4
+    d) 2nd_cut_candidates: Contains the confident transients with significanes greater than 4
+
+6) HTML_Supplies: Contains all the files relevant for the HTML page
+    a) Image_Populater.py: Populates and Generates the HTML page with the downloaded images
+    b) please_work.html: The generated HTML page containing the images and the relevant information
+    c) output.html: Contains the data from the please_work.html page
+    d) styles.css: Contains the formatting for the HTML page
+
+7) CSV: Is an alternate version of the VLASS_dyn_summary.php
+
+8) VLASS_dyn_summary.php: Contains the tiles that correspond to a specific RA and Dec
+
+9) VLASS Script.py: The main script that downloads all the cutouts, including VLASS cutouts, Legacy Survey cutouts,
+                    and Pan-STARRS1 cutouts; also outputs peak flux and RMS and VLASS observations to their respective
+                    csv's

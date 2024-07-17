@@ -228,7 +228,7 @@ def get_cutout(imname, name, c, epoch):
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-csv_file_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/bts_data.CSV"
+csv_file_path = "/CSV's/bts_data.CSV"
 ddir = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Images"
 
 
@@ -315,7 +315,7 @@ def run_search(name, c, date=None):
                 out = get_cutout(imname, name, c, epoch)
                 if out is not None:
                     peak, rms = out
-                    output_file = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Fluxes_and_RMS.csv"
+                    output_file = "/CSV's/Fluxes_and_RMS.csv"
                     with open(output_file, 'a') as f:
                         print(f"{name}_{epoch}.png has a peak flux of %s and a RMS of %s" %(np.round(peak * 1e3,
                                                             3), np.round(rms * 1e3, 3)), file=f)
@@ -404,27 +404,27 @@ def process_object(row):
         logging.info(f"Processing object {name} at RA: {ra}, Dec: {dec}")
         run_search(name, Obj)
 
-        with open("output.html", "a") as outputf:
+        with open("HTML_Supplies/output.html", "a") as outputf:
             plot_ls_cutout(ddir, name, ra, dec, outputf)
             plot_ps1_cutout(ddir, name, ra, dec, outputf)
 
     except Exception as e:
         logging.error(f"Failed to process object {name}: {e}")
 
-def process_csv(csv_file_path, start_line=0, num_lines=None):
+def process_csv(csv_file_path, start_line=0, end_line=None):
     with open(csv_file_path, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for idx, row in enumerate(reader):
             if idx < start_line:
                 continue
-            if num_lines is not None and idx >= start_line + num_lines:
+            if end_line is not None and idx > end_line:
                 break
             process_object(row)
 
-start_line = 989  # If you want line x, then do (x-2) for the actual line
-num_lines = 2726 # Number of lines to process, including first and last
+start_line = 8235  # If you want line x, then do (x-2) for the actual line
+end_line = 8235  # The last line to process -2
 
-process_csv(csv_file_path, start_line, num_lines)
+process_csv(csv_file_path, start_line, end_line)
 
 logging.info("Processing complete.")
 
@@ -463,4 +463,3 @@ if __name__ == "__main__":
     else:
         print('Searching all obs dates')
         run_search(name, c)
-

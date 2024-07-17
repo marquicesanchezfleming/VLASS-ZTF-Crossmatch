@@ -1,8 +1,8 @@
 import pandas as pd
 
 # loading the CSV files
-visual_observations = pd.read_csv('/ZTF_Observations.csv')
-vlass_observations = pd.read_csv('/VLASS_Observations.csv')
+visual_observations = pd.read_csv("/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/CSV's/ZTF_Observations.csv")
+vlass_observations = pd.read_csv('/CSV')
 
 visual_observations.head(), vlass_observations.head()
 
@@ -23,6 +23,6 @@ merged_data = pd.merge(visual_observations, vlass_observations, on='name', how='
 merged_data['visual_obs_date'] = pd.to_numeric(merged_data['visual_obs_date'], errors='coerce')
 merged_data['days_diff'] = merged_data['vlass_obs_date'] - merged_data['visual_obs_date']
 
-merged_file_path = '/Merged_Observations.csv'
+merged_file_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/CSV's/Merged_Observations.csv"
 merged_data.to_csv(merged_file_path, index=False)
 print(f"Merged data saved to {merged_file_path}")
