@@ -7,7 +7,7 @@ def generate_html():
     csv_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/bts_data.CSV"
     df = pd.read_csv(csv_path)
 
-    diff_days_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Difference_in_Days.csv"
+    diff_days_path = "/CSV's/Difference_in_Days.csv"
     diff_days_df = pd.read_csv(diff_days_path, header=None)
 
     print(diff_days_df.head())

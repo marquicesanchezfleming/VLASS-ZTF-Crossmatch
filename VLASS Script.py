@@ -143,7 +143,7 @@ def get_subtiles(tilename, epoch):
     c_tiles = SkyCoord(ra, dec, frame='icrs')
     return fname, c_tiles
 
-save_directory = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Images"
+save_directory = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/fits_files"
 def get_cutout(imname, name, c, epoch):
     print("Generating cutout")
     # Position of source
@@ -228,8 +228,12 @@ def get_cutout(imname, name, c, epoch):
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-csv_file_path = "/CSV's/bts_data.CSV"
-ddir = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/Images"
+csv_file_path = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/bts_data.CSV"
+ddir = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/fits_files"
+download_folder = '/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/fits_files'
+
+if not os.path.exists(download_folder):
+    os.makedirs(download_folder)
 
 
 def run_search(name, c, date=None):
@@ -245,6 +249,10 @@ def run_search(name, c, date=None):
     print("Running for %s" % name)
     print("Coordinates %s" % c)
     print("Date: %s" % date)
+
+    # Define the download folder
+    download_folder = "./fits_files"  # Update to your desired path
+    os.makedirs(download_folder, exist_ok=True)
 
     # Find the VLASS tile(s)
     tiles = get_tiles()
@@ -280,7 +288,7 @@ def run_search(name, c, date=None):
                     urlpath = urlopen(url_full)
                     # Get site HTML coding
                     string = (urlpath.read().decode('utf-8')).split("\n")
-                    # clean the HTML elements of trailing and leading whitespace
+                    # Clean the HTML elements of trailing and leading whitespace
                     vals = np.array([val.strip() for val in string])
                     # Make list of useful html elements
                     files = np.array(['alt="[DIR]"' in val.strip() for val in string])
@@ -305,20 +313,32 @@ def run_search(name, c, date=None):
                 url_get = "https://archive-new.nrao.edu/vlass/quicklook/%s/%s/%s" % (
                     epoch, tilename, subtile)
                 imname = "%s.I.iter1.image.pbcor.tt0.subim.fits" % subtile[0:-1]
-                fname = url_get + imname
+
+                # Update the FITS filename with ZTF name and epoch number
+                local_imname = os.path.join(download_folder, f"{name}_{imname}")
+
+                # Print URL for downloading
+                fname = os.path.join(url_get, imname)
                 print(fname)
-                if len(glob.glob(imname)) == 0:
-                    cmd = "curl -O %s" % fname
+
+                # Check if the file already exists in the specified folder
+                if not os.path.exists(local_imname):
+                    # Download the file
+                    cmd = f"curl -o '{local_imname}' '{fname}'"
                     print(cmd)
                     os.system(cmd)
+                else:
+                    print(f"{local_imname} already exists. Skipping download.")
+
                 # Get image cutout and save FITS data as png
-                out = get_cutout(imname, name, c, epoch)
+                out = get_cutout(local_imname, name, c, epoch)
                 if out is not None:
                     peak, rms = out
-                    output_file = "/CSV's/Fluxes_and_RMS.csv"
+                    output_file = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/CSV's/Fluxes_and_RMS.csv"
                     with open(output_file, 'a') as f:
-                        print(f"{name}_{epoch}.png has a peak flux of %s and a RMS of %s" %(np.round(peak * 1e3,
-                                                            3), np.round(rms * 1e3, 3)), file=f)
+                        print(
+                            f"{name}_{epoch}.png has a peak flux of {np.round(peak * 1e3, 3)} and a RMS of {np.round(rms * 1e3, 3)}",
+                            file=f)
                     print(rms, peak)
 
                     print("Peak flux is %s uJy" % (peak * 1e6))
@@ -328,69 +348,9 @@ def run_search(name, c, date=None):
 
                     output_file = "/Users/Djslime07/Documents/GitHub/VLASS-ZTF-Crossmatch/CSV's/VLASS_Observations.csv"
                     with open(output_file, 'a') as f:
-                        print(f"{name}_{epoch}.png observed on %s" % obsdate, file=f)
+                        print(f"{name}_{epoch}.png observed on {obsdate}", file=f)
                     print(limit, obsdate)
-
-                # Remove FITS file
-                os.remove(imname)
-
-def plot_ls_cutout(ddir, name, ra_str, dec_str, outputf):
-    """ Plot cutout from Legacy Survey """
-    # Create a SkyCoord object from ra_str and dec_str
-    coord = SkyCoord(ra_str, dec_str, unit=("hour", "degree"))
-
-    fname = os.path.join(ddir, f"{name}_LegSurvey.png")
-
-    if not os.path.isfile(fname):
-        url = f"http://legacysurvey.org/viewer/cutout.jpg?ra={coord.ra.deg}&dec={coord.dec.deg}&layer=ls-dr9&pixscale=0.27&bands=grz"
-        plt.figure(figsize=(2.1, 2.1), dpi=120)
-        try:
-            r = requests.get(url)
-            img = Image.open(io.BytesIO(r.content))
-            plt.imshow(img)
-            plt.title("LegSurv DR9", fontsize=12)
-            plt.axis('off')
-            plt.tight_layout()
-            plt.savefig(fname, bbox_inches="tight")
-
-            decsign = '+' if coord.dec.deg >= 0 else '-'
-            lslinkstr = f"http://legacysurvey.org/viewer?ra={coord.ra.deg:.6f}&dec={decsign}{abs(coord.dec.deg):.6f}&zoom=16&layer=dr9"
-            outputf.write(f"<a href='{lslinkstr}'>")
-            outputf.write(f'<img src="{name}_LegSurvey.png" height="200">')
-            outputf.write("</a>")
-            outputf.write('<br>')
-        except Exception as e:
-            # Not in footprint or another error
-            print(f"Error: {e}")
-            return None
-        finally:
-            plt.close()
-
-    return fname
-
-def plot_ps1_cutout(ddir, name, ra_str, dec_str, outputf):
-    """ Plot cutout from PanSTARRS """
-    # Create a SkyCoord object from ra_str and dec_str
-    coord = SkyCoord(ra_str, dec_str, unit=("hour", "degree"))
-
-    fname = os.path.join(ddir, f"{name}_ps1.png")
-
-    if not os.path.isfile(fname):
-        img = stamps.get_ps_stamp(coord.ra.deg, coord.dec.deg, size=240, color=["y", "g", "i"])
-        plt.figure(figsize=(2.1, 2.1), dpi=120)
-        plt.imshow(np.asarray(img))
-        plt.title("PS1 (y/g/i)", fontsize=12)
-        plt.axis('off')
-        plt.tight_layout()
-        plt.savefig(fname, bbox_inches="tight")
-
-        decsign = '+' if coord.dec.deg >= 0 else '-'
-        pslinkstr = f"https://ps1images.stsci.edu/cgi-bin/ps1cutouts?ra={coord.ra.deg:.6f}&dec={decsign}{abs(coord.dec.deg):.6f}&size=240&format=jpeg&filters=ygi"
-        outputf.write(f"<a href='{pslinkstr}'>")
-        outputf.write(f'<img src="{name}_ps1.png" height="200">')
-        outputf.write("</a>")
-        outputf.write('<br>')
-        plt.close()
+                    #os.remove(imname)
 
     return fname
 def process_object(row):
@@ -403,10 +363,6 @@ def process_object(row):
     try:
         logging.info(f"Processing object {name} at RA: {ra}, Dec: {dec}")
         run_search(name, Obj)
-
-        with open("HTML_Supplies/output.html", "a") as outputf:
-            plot_ls_cutout(ddir, name, ra, dec, outputf)
-            plot_ps1_cutout(ddir, name, ra, dec, outputf)
 
     except Exception as e:
         logging.error(f"Failed to process object {name}: {e}")
@@ -421,8 +377,8 @@ def process_csv(csv_file_path, start_line=0, end_line=None):
                 break
             process_object(row)
 
-start_line = 8235  # If you want line x, then do (x-2) for the actual line
-end_line = 8235  # The last line to process -2
+start_line = 1989  # If you want line x, then do (x-2) for the actual line
+end_line = 1989  # The last line to process -2
 
 process_csv(csv_file_path, start_line, end_line)
 
